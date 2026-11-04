@@ -17,10 +17,70 @@ def init_db():
             respuesta_correcta TEXT NOT NULL,
             categoria TEXT NOT NULL,
             docente TEXT
+ 
+def init_db():
+    conn = sqlite3.connect('banco_preguntas.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS preguntas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            enunciado TEXT NOT NULL,
+            opcion_a TEXT NOT NULL,
+            opcion_b TEXT NOT NULL,
+            opcion_c TEXT NOT NULL,
+            opcion_d TEXT NOT NULL,
+            respuesta_correcta TEXT NOT NULL,
+            categoria TEXT NOT NULL,
+            docente TEXT
         )
     ''')
+
+
+# --- 2. FUNCIONES DE APOYO ---
+def obtener_preguntas(categoria_filtro="Todas"):
+    conn = sqlite3.connect('banco_preguntas.db')
+    cursor = conn.cursor()
+    if categoria_filtro == "Todas":
+        cursor.execute("SELECT * FROM preguntas")
+    else:
+        cursor.execute("SELECT * FROM preguntas WHERE categoria = ?", (categoria_filtro,))
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
+def insertar_pregunta(enunciado, a, b, c, d, correcta, categoria, docente):
+    conn = sqlite3.connect('banco_preguntas.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO preguntas (enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, categoria, docente)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (enunciado, a, b, c, d, correcta, categoria, docente))
     conn.commit()
     conn.close()
+
+def generar_word(preguntas_seleccionadas, incluir_respuestas):
+    doc = docx.Document()
+    doc.add_heading('Evaluación Académica', 0)
+    doc.add_paragraph('Seleccione las respuestas correctas o desarrolle los siguientes ítems:\n')
+    
+    for i, p in enumerate(preguntas_seleccionadas, 1):
+        # p = (id, enunciado, a, b, c, d, correcta, categoria, docente)
+        doc.add_paragraph(f"{i}. {p[1]}")
+        doc.add_paragraph(f"   A) {p[2]}")
+        doc.add_paragraph(f"   B) {p[3]}")
+        doc.add_paragraph(f"   C) {p[4]}")
+        doc.add_paragraph(f"   D) {p[5]}")
+        doc.add_paragraph("") # Espacio
+        
+    if incluir_respuestas:
+        doc.add_page_break()
+        doc.add_heading('Clave de Respuestas', level=1)
+        for i, p in enumerate(preguntas_seleccionadas, 1):
+            doc.add_paragraph(f"{i}. {p[6]}")
+            
+    archivo_salida = "evaluacion_generada.docx"
+    doc.save(archivo_salida)
+    return archivo_salida
 
 init_db()
 
