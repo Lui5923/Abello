@@ -1,6 +1,5 @@
 import streamlit as st
 import sqlite3
-import docx
 import os
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQLITE ---
