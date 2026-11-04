@@ -1,8 +1,12 @@
 import streamlit as st
 import sqlite3
-import docx
 import os
 import io
+try:
+    import docx
+except ImportError:
+    st.error("⚠️ La librería 'python-docx' no está instalada en este entorno. Ejecuta 'pip install python-docx' en tu terminal.")
+    st.stop()
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQLITE ---
 def init_db():
