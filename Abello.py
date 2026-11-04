@@ -65,6 +65,13 @@ def insertar_pregunta_db(enunciado, a, b, c, d, correcta, grado, categoria, doce
     conn.commit()
     conn.close()
 
+def eliminar_pregunta_db(pregunta_id):
+    conn = sqlite3.connect('banco_preguntas.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM preguntas WHERE id = ?", (pregunta_id,))
+    conn.commit()
+    conn.close()
+
 def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respuestas):
     doc = docx.Document()
     
@@ -90,7 +97,7 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
             except Exception:
                 pass
                 
-        # Mostrar opciones SOLO si fueron escritas de verdad y no contienen texto genérico de relleno
+        # Mostrar opciones SOLO si fueron escritas de verdad
         if a and "por definir" not in a.lower():
             doc.add_paragraph(f"   A) {a}")
         if b and "por definir" not in b.lower():
@@ -120,10 +127,19 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
 st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=150)
 st.title("Sistema Integral de Banco de Preguntas por Grados")
 
+# --- ESCUDO DEL COLEGIO EN LA BARRA LATERAL ---
+# Puedes cambiar la URL por el enlace de tu escudo o dejar una imagen local llamada 'escudo.png'
+try:
+    st.sidebar.image("escudo.png", width=120)
+except Exception:
+    pass # Si no hay archivo local, continúa sin error
+
+st.sidebar.markdown("### Menú de Navegación")
+
 grados_disponibles = ["3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°", "11°"]
 categorias_disponibles = ["Cálculo", "Geometría", "Aritmética", "Estadística", "Álgebra"]
 
-menu = st.sidebar.selectbox("Navegación", ["Generar Examen", "Registrar Pregunta Manual", "Subir Documento Word"])
+menu = st.sidebar.selectbox("Selecciona una opción", ["Generar Examen", "Registrar Pregunta Manual", "Subir Documento Word", "Administrar / Eliminar Preguntas"])
 
 if menu == "Generar Examen":
     st.header("Generador de Evaluaciones por Grado")
@@ -170,7 +186,7 @@ if menu == "Generar Examen":
                         file_name=f"evaluacion_grado_{grado_elegido}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
-                st.success("¡Examen en Word generado limpio y sin opciones de relleno!")
+                st.success("¡Examen en Word generado con éxito!")
 
 elif menu == "Registrar Pregunta Manual":
     st.header("Módulo Docente: Crear Pregunta con Opciones e Imagen")
@@ -210,7 +226,7 @@ elif menu == "Registrar Pregunta Manual":
 
 elif menu == "Subir Documento Word":
     st.header("Módulo Docente: Subir Examen o Documento en Word")
-    st.write("Sube un archivo `.docx`. Las preguntas se registrarán limpias, sin opciones falsas ni respuestas automáticas.")
+    st.write("Sube un archivo `.docx` asignándole su respectivo grado.")
     
     with st.form("form_subir"):
         docente = st.text_input("Nombre del Docente:")
@@ -232,7 +248,6 @@ elif menu == "Subir Documento Word":
                     contador = 0
                     for para in doc_subido.paragraphs:
                         texto = para.text.strip()
-                        # Evitar párrafos vacíos o líneas cortas de encabezado que no sean preguntas
                         if len(texto) > 3:
                             img_blob = None
                             for run in para.runs:
@@ -256,8 +271,42 @@ elif menu == "Subir Documento Word":
                                 imagen_bytes=img_blob
                             )
                             contador += 1
-                    st.success(f"¡Se han importado exitosamente {contador} preguntas limpias para el Grado {grado_subida}!")
+                    st.success(f"¡Se han importado exitosamente {contador} preguntas para el Grado {grado_subida}!")
                 except Exception as e:
                     st.error(f"Error al procesar el archivo: {e}")
             else:
                 st.error("Por favor ingresa tu nombre y adjunta un archivo válido.")
+
+elif menu == "Administrar / Eliminar Preguntas":
+    st.header("🗑️ Administrar y Eliminar Preguntas")
+    st.write("Aquí puedes buscar preguntas por grado o categoría y eliminarlas si te equivocaste o subiste algo por error.")
+    
+    col_del1, col_del2 = st.columns(2)
+    with col_del1:
+        grado_del = st.selectbox("Filtrar por Grado para revisar:", ["Todos"] + grados_disponibles, key="filtro_del_grado")
+    with col_del2:
+        cat_del = st.selectbox("Filtrar por Categoría:", ["Todos"] + categorias_disponibles, key="filtro_del_cat")
+        
+    preguntas_para_borrar = obtener_preguntas(grado_del, cat_del)
+    
+    if not preguntas_para_borrar:
+        st.info("No hay preguntas registradas con los filtros seleccionados.")
+    else:
+        st.write(f"Se encontraron **{len(preguntas_para_borrar)}** preguntas:")
+        
+        for p in preguntas_para_borrar:
+            p_id, enunciado, a, b, c, d, correcta, grado, cat, docente, imagen = p
+            
+            with st.expander(f"📌 [Grado: {grado}] [{cat}] {enunciado[:60]}... (Autor: {docente})"):
+                st.write(f"**Enunciado completo:** {enunciado}")
+                st.write(f"**Grado:** {grado} | **Categoría:** {cat} | **Autor:** {docente}")
+                if imagen:
+                    st.image(imagen, width=150, caption="Imagen asociada")
+                
+                # Botón individual para eliminar esta pregunta específica
+                if st.button(f"🗑️ Eliminar esta pregunta (ID: {p_id})", key=f"btn_del_{p_id}"):
+                    eliminar_pregunta_db(p_id)
+                    st.success(f"¡Pregunta ID {p_id} eliminada correctamente!")
+                    st.rerun() # Recarga la página para actualizar la lista
+                    
+               
