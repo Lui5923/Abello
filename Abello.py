@@ -1,7 +1,7 @@
 import streamlit as st
 import sqlite3
-import os
 import docx
+import io
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQLITE ---
 def init_db():
@@ -20,19 +20,7 @@ def init_db():
             docente TEXT
         )
     ''')
-    # Insertar algunas preguntas de prueba si la tabla está vacía
-    cursor.execute('SELECT COUNT(*) FROM preguntas')
-    if cursor.fetchone()[0] == 0:
-        preguntas_iniciales = [
-            ("¿Cuál es la derivada de f(x) = x^2?", "2x", "x", "2", "x^2", "A", "Cálculo", "Prof. Luis"),
-            ("¿Cuánto es la suma de los ángulos internos de un triángulo?", "180°", "360°", "90°", "270°", "A", "Geometría", "Prof. Luis"),
-            ("¿Cuál es el valor de Pi (aproximado)?", "3.1416", "2.718", "1.414", "1.732", "A", "Aritmética", "Prof. María")
-        ]
-        cursor.executemany('''
-            INSERT INTO preguntas (enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, categoria, docente)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', preguntas_iniciales)
-        conn.commit()
+    conn.commit()
     conn.close()
 
 init_db()
@@ -59,10 +47,35 @@ def insertar_pregunta(enunciado, a, b, c, d, correcta, categoria, docente):
     conn.commit()
     conn.close()
 
-def generar_word(preguntas_seleccionadas, incluir_respuestas):
+def procesar_word_subido(archivo_subido, categoria, docente):
+    """Lee un archivo Word subido y extrae párrafos para agregarlos como preguntas"""
+    try:
+        doc = docx.Document(archivo_subido)
+        contador = 0
+        for para in doc.paragraphs:
+            texto = para.text.strip()
+            if texto: # Si el párrafo no está vacío
+                # Guardamos cada párrafo como una pregunta general de apoyo
+                insertar_pregunta(
+                    enunciado=texto,
+                    a="Opción A por defecto",
+                    b="Opción B por defecto",
+                    c="Opción C por defecto",
+                    d="Opción D por defecto",
+                    correcta="A",
+                    categoria=categoria,
+                    docente=docente
+                )
+                contador += 1
+        return contador
+    except Exception as e:
+        st.error(f"Error al procesar el archivo: {e}")
+        return 0
+
+def generar_word_evaluacion(preguntas_seleccionadas, incluir_respuestas):
     doc = docx.Document()
-    doc.add_heading('Evaluación Académica', 0)
-    doc.add_paragraph('Seleccione las respuestas correctas o desarrolle los siguientes ítems:\n')
+    doc.add_heading('Evaluación Académica Generada', 0)
+    doc.add_paragraph('Seleccione o desarrolle las respuestas correspondientes:\n')
     
     for i, p in enumerate(preguntas_seleccionadas, 1):
         # p = (id, enunciado, a, b, c, d, correcta, categoria, docente)
@@ -77,86 +90,80 @@ def generar_word(preguntas_seleccionadas, incluir_respuestas):
         doc.add_page_break()
         doc.add_heading('Clave de Respuestas', level=1)
         for i, p in enumerate(preguntas_seleccionadas, 1):
-            doc.add_paragraph(f"{i}. {p[6]}")
+            doc.add_paragraph(f"{i}. Clave: {p[6]} *(Pregunta de: {p[8]})*")
             
-    archivo_salida = "evaluacion_generada.docx"
+    archivo_salida = "evaluacion_final.docx"
     doc.save(archivo_salida)
     return archivo_salida
 
 # --- 3. INTERFAZ DE USUARIO (STREAMLIT) ---
-st.title("📚 Sistema de Gestión y Generación de Evaluaciones")
+st.title("📚 Sistema de Gestión y Banco de Preguntas")
 
-menu = st.sidebar.selectbox("Navegación", ["Generar Evaluación", "Banco de Preguntas / Subir Preguntas"])
+menu = st.sidebar.selectbox("Navegación", ["Generar Evaluación", "Subir Documento / Preguntas"])
 
 if menu == "Generar Evaluación":
-    st.header("Generador de Evaluaciones a Medida")
+    st.header("Seleccionar Preguntas y Descargar Word")
     
-    # Filtro por categoría
-    categorias = ["Todas", "Cálculo", "Geometría", "Aritmética", "Estadistica"]
+    categorias = ["Todas", "Cálculo", "Geometría", "Aritmética", "Estadística", "Álgebra"]
     cat_elegida = st.selectbox("Filtrar por categoría:", categorias)
     
     preguntas_disponibles = obtener_preguntas(cat_elegida)
     
     if not preguntas_disponibles:
-        st.info("No hay preguntas registradas en esta categoría.")
+        st.info("No hay preguntas registradas todavía. ¡Sube un documento o agrega preguntas en la otra sección!")
     else:
-        st.write("Selecciona las preguntas que deseas incluir en el examen:")
-        
-        preguntas_seleccionadas_ids = []
+        st.write("Selecciona las casillas de las preguntas que deseas exportar:")
+        preguntas_seleccionadas = []
         
         for p in preguntas_disponibles:
             p_id, enunciado, a, b, c, d, correcta, cat, docente = p
-            # Creamos un checkbox por cada pregunta
-            seleccionado = st.checkbox(f"**[{cat}]** {enunciado} *(Autor: {docente})*", key=f"preg_{p_id}")
+            seleccionado = st.checkbox(f"**[{cat}]** {enunciado} *(Autor: {docente})*", key=f"chk_{p_id}")
             if seleccionado:
-                preguntas_seleccionadas_ids.append(p)
+                preguntas_seleccionadas.append(p)
                 
         st.markdown("---")
-        incluir_clave = st.checkbox("Incluir hoja de respuestas al final del documento")
+        incluir_clave = st.checkbox("Incluir hoja de respuestas al final del documento Word")
         
         if st.button("📥 Descargar Examen en Word (.docx)"):
-            if not preguntas_seleccionadas_ids:
-                st.warning("Por favor, selecciona al menos una pregunta.")
+            if not preguntas_seleccionadas:
+                st.warning("Por favor, marca al menos una pregunta.")
             else:
-                path_archivo = generar_word(preguntas_seleccionadas_ids, incluir_clave)
+                path_archivo = generar_word_evaluacion(preguntas_seleccionadas, incluir_clave)
                 with open(path_archivo, "rb") as f:
                     st.download_button(
-                        label="Haz clic aquí para descargar tu archivo",
+                        label="Hacer clic aquí para descargar el archivo",
                         data=f,
                         file_name="evaluacion.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
-                st.success("¡Documento generado exitosamente!")
+                st.success("¡Archivo Word generado con éxito!")
 
-elif menu == "Banco de Preguntas / Subir Preguntas":
-    st.header("Módulo Docente: Subir Pregunta al Banco")
+elif menu == "Subir Documento / Preguntas":
+    st.header("Módulo Docente: Subir Documento Word")
+    st.write("Sube un archivo `.docx` con tus preguntas para que el sistema las extraiga y las ponga a disposición de todos los docentes.")
     
-    with st.form("form_subir_pregunta"):
+    with st.form("form_subir_doc"):
         docente = st.text_input("Nombre del Docente:")
-        categoria = st.selectbox("Categoría / Tema:", ["Cálculo", "Geometría", "Aritmética", "Estadística", "Álgebra"])
-        enunciado = st.text_area("Enunciado de la pregunta:")
+        categoria = st.selectbox("Categoría de las preguntas:", ["Cálculo", "Geometría", "Aritmética", "Estadística", "Álgebra"])
+        archivo_word = st.file_uploader("Sube tu archivo de Word (.docx)", type=["docx"])
         
-        col1, col2 = st.columns(2)
-        with col1:
-            opcion_a = st.text_input("Opción A:")
-            opcion_b = st.text_input("Opción B:")
-        with col2:
-            opcion_c = st.text_input("Opción C:")
-            opcion_d = st.text_input("Opción D:")
-            
-        respuesta_correcta = st.selectbox("Respuesta Correcta:", ["A", "B", "C", "D"])
-        
-        enviar = st.form_submit_button("Guardar Pregunta en el Sistema")
+        enviar = st.form_submit_button("Procesar y Guardar en el Banco")
         
         if enviar:
-            if docente and enunciado and opcion_a and opcion_b and opcion_c and opcion_d:
-                insertar_pregunta(enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, categoria, docente)
-                st.success("¡Pregunta agregada correctamente al banco de datos!")
+            if docente and archivo_word:
+                total_agregadas = procesar_word_subido(archivo_word, categoria, docente)
+                if total_agregadas > 0:
+                    st.success(f"¡Se han extraído e integrado {total_agregadas} elementos al banco de datos exitosamente!")
+                else:
+                    st.warning("El archivo parecía vacío o no se pudieron leer párrafos.")
             else:
-                st.error("Por favor completa todos los campos obligatorios.")
+                st.error("Por favor ingresa tu nombre y adjunta un archivo válido.")
                 
     st.markdown("---")
-    st.subheader("Preguntas Registradas Actualmente en el Sistema")
+    st.subheader("Banco Actual de Preguntas en el Sistema")
     todas = obtener_preguntas("Todas")
-    for p in todas:
-        st.write(f"- **[{p[7]}]** {p[1]} *(Creada por: {p[8]})*")
+    if not todas:
+        st.write("Aún no hay registros.")
+    else:
+        for p in todas:
+            st.write(f"- **[{p[7]}]** {p[1]} *(Subido por: {p[8]})*")
