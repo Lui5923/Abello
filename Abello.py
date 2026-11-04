@@ -2,8 +2,13 @@ import streamlit as st
 import sqlite3
 import os
 import io
-import zipfile
-import xml.etree.ElementTree as ET
+
+# Intento seguro de importar docx con advertencia visual si falta
+try:
+    import docx
+except ImportError:
+    st.error("⚠️ La librería 'python-docx' no está instalada. Ejecuta 'pip install python-docx' en tu terminal o agrégala a tu requirements.txt.")
+    st.stop()
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQLITE ---
 def init_db():
@@ -29,7 +34,7 @@ def init_db():
 
 init_db()
 
-# --- 2. FUNCIONES DE APOYO Y LECTURA NATIVA DE WORD ---
+# --- 2. FUNCIONES DE APOYO Y GESTIÓN DE DATOS ---
 def obtener_preguntas(grado_filtro="Todos", categoria_filtro="Todos"):
     conn = sqlite3.connect('banco_preguntas.db')
     cursor = conn.cursor()
@@ -60,74 +65,48 @@ def insertar_pregunta_db(enunciado, a, b, c, d, correcta, grado, categoria, doce
     conn.commit()
     conn.close()
 
-def leer_word_nativo(archivo_subido):
-    """Lee párrafos de un archivo .docx usando únicamente herramientas nativas de Python (sin instalar docx)"""
-    parrafos = []
-    try:
-        with zipfile.ZipFile(archivo_subido, 'r') as z:
-            # Un archivo .docx es un archivo zip con un xml de contenido llamado word/document.xml
-            xml_content = z.read('word/document.xml')
-            root = ET.fromstring(xml_content)
-            
-            # Espacios de nombres XML de Word
-            namespaces = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
-            
-            # Buscar todos los párrafos (<w:p>)
-            for p in root.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p'):
-                textos = []
-                for t in p.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
-                    if t.text:
-                        textos.append(t.text)
-                parrafo_completo = "".join(textos).strip()
-                if parrafo_completo:
-                    parrafos.append(parrafo_completo)
-    except Exception as e:
-        st.error(f"Error al leer la estructura interna del Word: {e}")
-    return parrafos
-
-def procesar_word_subido(archivo_subido, grado, categoria, docente):
-    """Procesa el archivo Word nativo y guarda las preguntas"""
-    try:
-        parrafos = leer_word_nativo(archivo_subido)
-        contador = 0
-        for texto in parrafos:
-            insertar_pregunta_db(
-                enunciado=texto,
-                a="Opción A por defecto",
-                b="Opción B por defecto",
-                c="Opción C por defecto",
-                d="Opción D por defecto",
-                correcta="A",
-                grado=grado,
-                categoria=categoria,
-                docente=docente,
-                imagen_bytes=None
-            )
-            contador += 1
-        return contador
-    except Exception as e:
-        st.error(f"Error al procesar el archivo: {e}")
-        return 0
-
 def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respuestas):
-    """Genera un archivo de texto plano con formato descargable en caso de emergencia, o simula la descarga"""
-    # Creamos un contenido de texto estructurado para el archivo descargado
-    contenido = f"EVALUACIÓN ACADÉMICA - GRADO {grado_eval}\n" + "="*40 + "\n\n"
+    doc = docx.Document()
     
+    # --- PLANTILLA DE ENCABEZADO PARA EL EXAMEN ---
+    doc.add_heading(f'EVALUACIÓN ACADÉMICA - GRADO {grado_eval}', level=0)
+    doc.add_paragraph("Nombre del Estudiante: __________________________________________________")
+    doc.add_paragraph(f"Grado: {grado_eval}       Fecha: _________________       Calificación: ____________")
+    doc.add_paragraph("Instrucciones: Lea atentamente cada enunciado, observe las figuras si las hay y seleccione la opción correcta.\n")
+    doc.add_paragraph("--------------------------------------------------------------------------------------------------------------------")
+    
+    # --- CUERPO DE LAS PREGUNTAS Y OPCIONES ---
     for i, p in enumerate(preguntas_seleccionadas, 1):
         p_id, enunciado, a, b, c, d, correcta, grado, cat, docente, imagen = p
-        contenido += f"{i}. {enunciado}\n"
-        contenido += f"   A) {a}\n"
-        contenido += f"   B) {b}\n"
-        contenido += f"   C) {c}\n"
-        contenido += f"   D) {d}\n\n"
         
+        # Enunciado
+        doc.add_paragraph(f"{i}. {enunciado}")
+        
+        # Insertar imagen en el Word si la pregunta tiene una asociada
+        if imagen:
+            image_stream = io.BytesIO(imagen)
+            try:
+                doc.add_picture(image_stream, width=docx.shared.Inches(3.2))
+            except Exception:
+                pass
+                
+        # Opciones A, B, C, D reales
+        doc.add_paragraph(f"   A) {a}")
+        doc.add_paragraph(f"   B) {b}")
+        doc.add_paragraph(f"   C) {c}")
+        doc.add_paragraph(f"   D) {d}")
+        doc.add_paragraph("") # Espacio entre preguntas
+        
+    # --- HOJA DE RESPUESTAS (OPCIONAL) ---
     if incluir_respuestas:
-        contenido += "\n" + "="*20 + "\nCLAVE DE RESPUESTAS\n" + "="*20 + "\n"
+        doc.add_page_break()
+        doc.add_heading('CLAVE DE RESPUESTAS (USO EXCLUSIVO DEL DOCENTE)', level=1)
         for i, p in enumerate(preguntas_seleccionadas, 1):
-            contenido += f"{i}. {p[6]}\n"
+            doc.add_paragraph(f"{i}. Opción correcta: {p[6]} *(Grado: {p[7]} - Categ: {p[8]})*")
             
-    return contenido
+    archivo_salida = f"evaluacion_grado_{grado_eval}.docx"
+    doc.save(archivo_salida)
+    return archivo_salida
 
 # --- 3. INTERFAZ DE USUARIO CON STREAMLIT ---
 st.title("📚 Sistema Integral de Banco de Preguntas por Grados")
@@ -156,28 +135,36 @@ if menu == "Generar Examen":
         
         for p in preguntas_disponibles:
             p_id, enunciado, a, b, c, d, correcta, grado, cat, docente, imagen = p
-            seleccionado = st.checkbox(f"**[Grado: {grado}] [{cat}]** {enunciado} *(Autor: {docente})*", key=f"chk_{p_id}")
+            
+            col_check, col_img = st.columns([4, 1])
+            with col_check:
+                seleccionado = st.checkbox(f"**[Grado: {grado}] [{cat}]** {enunciado} *(Autor: {docente})*", key=f"chk_{p_id}")
+            with col_img:
+                if imagen:
+                    st.image(imagen, width=90, caption="Con imagen")
+            
             if seleccionado:
                 preguntas_seleccionadas.append(p)
                 
         st.markdown("---")
-        incluir_clave = st.checkbox("Incluir clave de respuestas al final del documento")
+        incluir_clave = st.checkbox("Incluir clave de respuestas al final del documento Word")
         
-        if st.button("📥 Descargar Examen"):
+        if st.button("📥 Descargar Examen en Word (.docx)"):
             if not preguntas_seleccionadas:
                 st.warning("Por favor, marca al menos una pregunta.")
             else:
-                texto_archivo = generar_word_evaluacion(preguntas_seleccionadas, grado_elegido, incluir_clave)
-                st.download_button(
-                    label="Haz clic aquí para descargar el archivo de evaluación",
-                    data=texto_archivo,
-                    file_name=f"evaluacion_grado_{grado_elegido}.txt",
-                    mime="text/plain"
-                )
-                st.success("¡Examen listo para descargar!")
+                path_archivo = generar_word_evaluacion(preguntas_seleccionadas, grado_elegido if grado_elegido != "Todos" else "Varios", incluir_clave)
+                with open(path_archivo, "rb") as f:
+                    st.download_button(
+                        label="Hacer clic aquí para descargar tu archivo Word",
+                        data=f,
+                        file_name=f"evaluacion_grado_{grado_elegido}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                st.success("¡Examen en Word generado con éxito con su plantilla y opciones!")
 
 elif menu == "Registrar Pregunta Manual":
-    st.header("Módulo Docente: Crear Pregunta con Opciones")
+    st.header("Módulo Docente: Crear Pregunta con Opciones e Imagen")
     
     with st.form("form_manual"):
         docente = st.text_input("Nombre del Docente:")
@@ -189,6 +176,9 @@ elif menu == "Registrar Pregunta Manual":
             categoria = st.selectbox("Categoría:", categorias_disponibles)
             
         enunciado = st.text_area("Enunciado de la pregunta:")
+        
+        # Opción para subir imagen opcional junto a la pregunta manual
+        imagen_subida = st.file_uploader("Adjuntar imagen para la pregunta (Opcional)", type=["png", "jpg", "jpeg"])
         
         col1, col2 = st.columns(2)
         with col1:
@@ -204,14 +194,15 @@ elif menu == "Registrar Pregunta Manual":
         
         if enviar:
             if docente and enunciado and opcion_a and opcion_b and opcion_c and opcion_d:
-                insertar_pregunta_db(enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, grado_reg, categoria, docente, None)
-                st.success("¡Pregunta guardada correctamente en el sistema para el grado seleccionado!")
+                img_bytes = imagen_subida.read() if imagen_subida else None
+                insertar_pregunta_db(enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, grado_reg, categoria, docente, img_bytes)
+                st.success("¡Pregunta guardada con sus opciones y grado correctamente!")
             else:
                 st.error("Por favor completa todos los campos obligatorios.")
 
 elif menu == "Subir Documento Word":
     st.header("Módulo Docente: Subir Examen o Documento en Word")
-    st.write("Sube un archivo `.docx`. El sistema leerá el texto de forma nativa sin errores y lo asignará al grado seleccionado.")
+    st.write("Sube un archivo `.docx` asignándole su respectivo grado.")
     
     with st.form("form_subir"):
         docente = st.text_input("Nombre del Docente:")
@@ -228,10 +219,38 @@ elif menu == "Subir Documento Word":
         
         if procesar:
             if docente and archivo_word:
-                total = procesar_word_subido(archivo_word, grado_subida, categoria, docente)
-                if total > 0:
-                    st.success(f"¡Se han importado exitosamente {total} elementos para el Grado {grado_subida}!")
-                else:
-                    st.warning("No se pudieron extraer textos del documento.")
+                # Procesamiento mediante python-docx estándar
+                try:
+                    doc_subido = docx.Document(archivo_word)
+                    contador = 0
+                    for para in doc_subido.paragraphs:
+                        texto = para.text.strip()
+                        if texto:
+                            # Extraer imagen si el párrafo la contiene
+                            img_blob = None
+                            for run in para.runs:
+                                elementos_dibujo = run._r.xpath('.//a:blip')
+                                for blip in elementos_dibujo:
+                                    embed_id = blip.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+                                    if embed_id in doc_subido.part.rels:
+                                        img_blob = doc_subido.part.rels[embed_id].target_part.blob
+                                        break
+
+                            insertar_pregunta_db(
+                                enunciado=texto,
+                                a="Opción A por definir",
+                                b="Opción B por definir",
+                                c="Opción C por definir",
+                                d="Opción D por definir",
+                                correcta="A",
+                                grado=grado_subida,
+                                categoria=categoria,
+                                docente=docente,
+                                imagen_bytes=img_blob
+                            )
+                            contador += 1
+                    st.success(f"¡Se han importado exitosamente {contador} elementos para el Grado {grado_subida}!")
+                except Exception as e:
+                    st.error(f"Error al procesar el archivo: {e}")
             else:
                 st.error("Por favor ingresa tu nombre y adjunta un archivo válido.")
