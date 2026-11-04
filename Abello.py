@@ -4,7 +4,7 @@ import os
 import io
 try:
     import docx
-    except ImportError:
+except ImportError:
     st.error
     st.stop()
 
