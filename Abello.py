@@ -31,9 +31,7 @@ def init_db():
             opcion_d TEXT NOT NULL,
             respuesta_correcta TEXT NOT NULL,
             categoria TEXT NOT NULL,
-            docente TEXT
-        )
-    ''')
+            docente TEXT)''')
 
 
 # --- 2. FUNCIONES DE APOYO ---
