@@ -117,8 +117,8 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
     return archivo_salida
 
 # --- 3. INTERFAZ DE USUARIO CON STREAMLIT ---
-st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=150, caption="Escudo intitucional")
-st.title("Sistema Integral de Banco de Preguntas por Grados")
+st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=150)
+st.title(st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=50)"Sistema Integral de Banco de Preguntas por Grados")
 
 grados_disponibles = ["3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°", "11°"]
 categorias_disponibles = ["Cálculo", "Geometría", "Aritmética", "Estadística", "Álgebra"]
