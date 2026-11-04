@@ -96,15 +96,6 @@ def obtener_preguntas(categoria_filtro="Todas"):
     conn.close()
     return data
 
-def insertar_pregunta(enunciado, a, b, c, d, correcta, categoria, docente):
-    conn = sqlite3.connect('banco_preguntas.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO preguntas (enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, categoria, docente)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?) ''', (enunciado, a, b, c, d, correcta, categoria, docente))
-    conn.commit()
-    conn.close()
-
 def procesar_word_subido(archivo_subido, categoria, docente):
     """Lee un archivo Word subido y extrae párrafos para agregarlos como preguntas"""
     try:
