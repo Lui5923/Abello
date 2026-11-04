@@ -96,7 +96,8 @@ def generar_word_evaluacion(preguntas_seleccionadas, incluir_respuestas):
     return archivo_salida
 
 # --- 3. INTERFAZ DE USUARIO (STREAMLIT) ---
-st.title("📚 Sistema de Gestión y Banco de Preguntas")
+st.title("Sistema de Gestión y Banco de Preguntas")
+st.title("Institución Educativa Distrital Técnica Bilingüe Jorge Nicolás Abello")
 
 menu = st.sidebar.selectbox("Navegación", ["Generar Evaluación", "Subir Documento / Preguntas"])
 
