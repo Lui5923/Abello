@@ -5,7 +5,7 @@ import io
 try:
     import docx
 except ImportError:
-    st.error
+    st.error("Error")
     st.stop()
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQLITE ---
