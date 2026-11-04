@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 import os
+import docx
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQLITE ---
 def init_db():
