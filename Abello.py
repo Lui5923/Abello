@@ -1,7 +1,7 @@
 import streamlit as st
 import sqlite3
 import io
-import docx
+
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS SQLITE ---
 def init_db():
     conn = sqlite3.connect('banco_preguntas.db')
