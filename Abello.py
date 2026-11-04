@@ -60,7 +60,7 @@ def insertar_pregunta(enunciado, a, b, c, d, correcta, categoria, docente):
     conn.close()
 
 def generar_word(preguntas_seleccionadas, incluir_respuestas):
-    doc = docx.Document()
+    doc = python-docx.Document()
     doc.add_heading('Evaluación Académica', 0)
     doc.add_paragraph('Seleccione las respuestas correctas o desarrolle los siguientes ítems:\n')
     
