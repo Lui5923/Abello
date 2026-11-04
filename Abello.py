@@ -92,7 +92,7 @@ if menu == "Generar Evaluación":
     st.header("Generador de Evaluaciones a Medida")
     
     # Filtro por categoría
-    categorias = ["Todas", "Cálculo", "Geometría", "Aritmética"]
+    categorias = ["Todas", "Cálculo", "Geometría", "Aritmética", "Estadistica"]
     cat_elegida = st.selectbox("Filtrar por categoría:", categorias)
     
     preguntas_disponibles = obtener_preguntas(cat_elegida)
