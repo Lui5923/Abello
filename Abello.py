@@ -54,7 +54,8 @@ def insertar_pregunta(enunciado, a, b, c, d, correcta, categoria, docente):
     cursor.execute('''
         INSERT INTO preguntas (enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, categoria, docente)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (enunciado, a, b, c, d, correcta, categoria, docente))
+        '''
+    (enunciado, a, b, c, d, correcta, categoria, docente))
     conn.commit()
     conn.close()
 
