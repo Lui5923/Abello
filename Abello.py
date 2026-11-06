@@ -58,9 +58,10 @@ def obtener_preguntas(grado_filtro="Todos", categoria_filtro="Todos"):
 def insertar_pregunta_db(enunciado, a, b, c, d, correcta, grado, categoria, docente, imagen_bytes=None):
     conn = sqlite3.connect('banco_preguntas.db')
     cursor = conn.cursor()
+    # Corrección exacta de las 10 columnas de la tabla frente a los 10 valores enviados
     cursor.execute('''
         INSERT INTO preguntas (enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, grado, categoria, docente, imagen)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (enunciado, a, b, c, d, correcta, grado, categoria, docente, imagen_bytes))
     conn.commit()
     conn.close()
@@ -124,9 +125,13 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
     return archivo_salida
 
 # --- 3. INTERFAZ DE USUARIO CON STREAMLIT ---
-st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=150)
-st.title("Institución Educativa Distrital Técnica Bilingüe Jorge Nicolás Abello")
-st.title("Sistema Integral de Banco de Preguntas por Grados")
+st.title("📚 Sistema Integral de Banco de Preguntas por Grados")
+
+# --- ESCUDO DEL COLEGIO EN LA BARRA LATERAL ---
+try:
+    st.sidebar.image("escudo.png", width=120)
+except Exception:
+    pass
 
 st.sidebar.markdown("### Menú de Navegación")
 
@@ -149,21 +154,30 @@ if menu == "Generar Examen":
     if not preguntas_disponibles:
         st.info("No hay preguntas registradas para los filtros seleccionados.")
     else:
-        st.write("Selecciona las casillas de las preguntas que deseas incluir en la evaluación:")
+        st.write("📖 **Haz clic en cada pregunta para leer su enunciado completo y seleccionarla:**")
         preguntas_seleccionadas = []
         
         for p in preguntas_disponibles:
             p_id, enunciado, a, b, c, d, correcta, grado, cat, docente, imagen = p
             
-            col_check, col_img = st.columns([4, 1])
-            with col_check:
-                seleccionado = st.checkbox(f"**[Grado: {grado}] [{cat}]** {enunciado} *(Autor: {docente})*", key=f"chk_{p_id}")
-            with col_img:
+            with st.expander(f"[Grado: {grado}] [{cat}] - {enunciado[:60]}... (Autor: {docente})"):
+                st.markdown(f"**Enunciado completo:**\n\n{enunciado}")
+                
+                if a and "por definir" not in a.lower():
+                    st.write(f"**A)** {a}")
+                if b and "por definir" not in b.lower():
+                    st.write(f"**B)** {b}")
+                if c and "por definir" not in c.lower():
+                    st.write(f"**C)** {c}")
+                if d and "por definir" not in d.lower():
+                    st.write(f"**D)** {d}")
+                
                 if imagen:
-                    st.image(imagen, width=90, caption="Con imagen")
-            
-            if seleccionado:
-                preguntas_seleccionadas.append(p)
+                    st.image(imagen, width=220, caption="Imagen asociada a la pregunta")
+                
+                seleccionado = st.checkbox("✔ Incluir esta pregunta en el examen", key=f"chk_{p_id}")
+                if seleccionado:
+                    preguntas_seleccionadas.append(p)
                 
         st.markdown("---")
         incluir_clave = st.checkbox("Incluir clave de respuestas al final del documento Word")
@@ -297,8 +311,7 @@ elif menu == "Administrar / Eliminar Preguntas":
                 if imagen:
                     st.image(imagen, width=150, caption="Imagen asociada")
                 
-                # Botón individual para eliminar esta pregunta específica
                 if st.button(f"🗑️ Eliminar esta pregunta (ID: {p_id})", key=f"btn_del_{p_id}"):
                     eliminar_pregunta_db(p_id)
                     st.success(f"¡Pregunta ID {p_id} eliminada correctamente!")
-                    st.rerun() # Recarga la página para actualizar la lista
+                    st.rerun()
