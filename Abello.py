@@ -155,7 +155,7 @@ if menu == "Generar Examen":
         cat_elegida = st.selectbox("Filtrar por categoría:", ["Todas"] + categorias_disponibles)
     with col_t1:
         # Extraer temas únicos disponibles según los filtros actuales
--       preguntas_filtro_prev = obtener_preguntas(grado_elegido, cat_elegida, "Todos")
+        preguntas_filtro_prev = obtener_preguntas(grado_elegido, cat_elegida, "Todos")
         temas_existentes = sorted(list(set([p[9] for p in preguntas_filtro_prev if p[9]])))
         tema_elegido = st.selectbox("Filtrar por Tema:", ["Todos"] + temas_existentes)
     
