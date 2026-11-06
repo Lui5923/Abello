@@ -127,12 +127,6 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
 st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=150)
 st.title("Sistema Integral de Banco de Preguntas por Grados")
 
-# --- ESCUDO DEL COLEGIO EN LA BARRA LATERAL ---
-try:
-    st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=120)
-except Exception:
-    pass
-
 st.sidebar.markdown("### Menú de Navegación")
 
 grados_disponibles = ["3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°", "11°"]
