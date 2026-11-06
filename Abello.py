@@ -68,7 +68,7 @@ def obtener_preguntas(grado_filtro="Todos", categoria_filtro="Todos", tema_filtr
 def insertar_pregunta_db(enunciado, a, b, c, d, correcta, grado, categoria, tema, docente, imagen_bytes=None):
     conn = sqlite3.connect('banco_preguntas.db')
     cursor = conn.cursor()
-    # Corrección exacta: 12 columnas en la tabla frente a los 12 valores enviados
+    
     cursor.execute('''
         INSERT INTO preguntas (enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, grado, categoria, tema, docente, imagen)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -137,7 +137,7 @@ st.title("Institución Educativa Distrital Técnica Bilingüe Jorge Nicolás Abe
 st.title("Sistema Integral de Banco de Preguntas por Grados")
 st.sidebar.markdown("### Menú de Navegación")
 
-grados_disponibles = ["3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°", "11°"]
+grados_disponibles = ["5°", "6°", "7°", "8°", "9°", "10°", "11°"]
 categorias_disponibles = ["Cálculo", "Geometría", "Aritmética", "Estadística", "Álgebra"]
 
 menu = st.sidebar.selectbox("Selecciona una opción", ["Generar Examen", "Registrar Pregunta Manual", "Subir Documento Word", "Administrar / Eliminar Preguntas"])
