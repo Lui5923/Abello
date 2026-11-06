@@ -68,9 +68,10 @@ def obtener_preguntas(grado_filtro="Todos", categoria_filtro="Todos", tema_filtr
 def insertar_pregunta_db(enunciado, a, b, c, d, correcta, grado, categoria, tema, docente, imagen_bytes=None):
     conn = sqlite3.connect('banco_preguntas.db')
     cursor = conn.cursor()
+    # Corrección exacta: 12 columnas en la tabla frente a los 12 valores enviados
     cursor.execute('''
         INSERT INTO preguntas (enunciado, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta, grado, categoria, tema, docente, imagen)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (enunciado, a, b, c, d, correcta, grado, categoria, tema, docente, imagen_bytes))
     conn.commit()
     conn.close()
@@ -96,10 +97,8 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
     for i, p in enumerate(preguntas_seleccionadas, 1):
         p_id, enunciado, a, b, c, d, correcta, grado, cat, tema, docente, imagen = p
         
-        # Enunciado con referencia al tema
         doc.add_paragraph(f"{i}. {enunciado}")
         
-        # Insertar imagen en el Word si la pregunta tiene una asociada
         if imagen:
             image_stream = io.BytesIO(imagen)
             try:
@@ -107,7 +106,6 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
             except Exception:
                 pass
                 
-        # Mostrar opciones SOLO si fueron escritas de verdad
         if a and "por definir" not in a.lower():
             doc.add_paragraph(f"   A) {a}")
         if b and "por definir" not in b.lower():
@@ -117,7 +115,7 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
         if d and "por definir" not in d.lower():
             doc.add_paragraph(f"   D) {d}")
             
-        doc.add_paragraph("") # Espacio entre preguntas
+        doc.add_paragraph("") 
         
     # --- HOJA DE RESPUESTAS (OPCIONAL) ---
     if incluir_respuestas:
@@ -134,7 +132,6 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
     return archivo_salida
 
 # --- 3. INTERFAZ DE USUARIO CON STREAMLIT ---
-
 st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=150)
 st.title("Institución Educativa Distrital Técnica Bilingüe Jorge Nicolás Abello")
 st.title("Sistema Integral de Banco de Preguntas por Grados")
@@ -154,7 +151,6 @@ if menu == "Generar Examen":
     with col_c1:
         cat_elegida = st.selectbox("Filtrar por categoría:", ["Todas"] + categorias_disponibles)
     with col_t1:
-        # Extraer temas únicos disponibles según los filtros actuales
         preguntas_filtro_prev = obtener_preguntas(grado_elegido, cat_elegida, "Todos")
         temas_existentes = sorted(list(set([p[9] for p in preguntas_filtro_prev if p[9]])))
         tema_elegido = st.selectbox("Filtrar por Tema:", ["Todos"] + temas_existentes)
@@ -248,7 +244,6 @@ elif menu == "Subir Documento Word":
     st.header("Módulo Docente: Subir Examen o Documento en Word")
     st.write("Sube un archivo `.docx`. El sistema detectará un tema automático que podrás modificar si es incorrecto.")
     
-    # Campo para el archivo
     docente = st.text_input("Nombre del Docente:")
     
     col_g3, col_c3 = st.columns(2)
@@ -259,7 +254,6 @@ elif menu == "Subir Documento Word":
         
     archivo_word = st.file_uploader("Selecciona el archivo Word (.docx)", type=["docx"])
     
-    # Previsualización o detección automática del tema
     tema_sugerido = "Evaluación general"
     if archivo_word:
         try:
