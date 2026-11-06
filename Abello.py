@@ -125,6 +125,7 @@ def generar_word_evaluacion(preguntas_seleccionadas, grado_eval, incluir_respues
 
 # --- 3. INTERFAZ DE USUARIO CON STREAMLIT ---
 st.sidebar.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdknrErzN7GfW0RgOyaT5WN7PiV9Hw0clyslV0V9yBjNRYzKj1h9T8gnZ4&s=10", width=150)
+st.title("Institución Educativa Distrital Técnica Bilingüe Jorge Nicolás Abello")
 st.title("Sistema Integral de Banco de Preguntas por Grados")
 
 st.sidebar.markdown("### Menú de Navegación")
