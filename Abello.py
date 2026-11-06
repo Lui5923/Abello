@@ -155,7 +155,6 @@ if menu == "Generar Examen":
         for p in preguntas_disponibles:
             p_id, enunciado, a, b, c, d, correcta, grado, cat, docente, imagen = p
             
-            # Usamos un expander para dar espacio amplio de lectura a cada pregunta
             with st.expander(f"[Grado: {grado}] [{cat}] - {enunciado[:60]}... (Autor: {docente})"):
                 st.markdown(f"**Enunciado completo:**\n\n{enunciado}")
                 
@@ -171,7 +170,6 @@ if menu == "Generar Examen":
                 if imagen:
                     st.image(imagen, width=220, caption="Imagen asociada a la pregunta")
                 
-                # Checkbox dentro del expander para marcarla cómodamente
                 seleccionado = st.checkbox("✔ Incluir esta pregunta en el examen", key=f"chk_{p_id}")
                 if seleccionado:
                     preguntas_seleccionadas.append(p)
